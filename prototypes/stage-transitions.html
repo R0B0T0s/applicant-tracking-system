@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage Move Rules</title>
+<!-- PROTOTYPE: throwaway demo for design question 9. Not production code. -->
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --line: #e3e3e0;
+    --accent: #3b5bdb; --accent-soft: #e7ecff; --ok: #2b8a3e; --ok-soft: #e6f4ea;
+    --bad: #c92a2a; --bad-soft: #fdecec; --final: #868e96;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; }
+  p { margin: 0 0 10px; }
+  .lede { color: var(--muted); max-width: 70ch; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-top: 20px; }
+  .grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .rule { border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer; background: var(--card); text-align: left; font: inherit; color: inherit; }
+  .rule b { display: block; margin-bottom: 4px; }
+  .rule span { color: var(--muted); font-size: 13px; }
+  .rule.on { border-color: var(--accent); background: var(--accent-soft); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button.btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  button.btn:hover { border-color: var(--accent); }
+  button.btn.allowed { border-color: var(--ok); color: var(--ok); }
+  button.btn.blocked { color: var(--muted); border-style: dashed; }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn:disabled { opacity: .4; cursor: default; }
+  .seg button { border-radius: 0; margin: 0; }
+  .seg button:first-child { border-radius: 8px 0 0 8px; }
+  .seg button:last-child { border-radius: 0 8px 8px 0; }
+  .seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pipeline { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 14px; }
+  .chip { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 14px; }
+  .chip.final { color: var(--final); }
+  .chip.current { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .arrow { color: var(--line); }
+  .sep { width: 1px; height: 24px; background: var(--line); margin: 0 6px; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; font-weight: 600; }
+  .banner { margin-top: 14px; padding: 10px 14px; border-radius: 8px; }
+  .banner.ok { background: var(--ok-soft); color: var(--ok); }
+  .banner.bad { background: var(--bad-soft); color: var(--bad); }
+  .banner.info { background: var(--accent-soft); color: var(--accent); }
+  .log { margin: 14px 0 0; padding: 0; list-style: none; max-height: 180px; overflow: auto; font-size: 13px; border-top: 1px solid var(--line); }
+  .log li { padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .log .x { color: var(--bad); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .tabs button { font: inherit; background: none; border: none; padding: 8px 12px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+  ol.steps { padding-left: 20px; margin: 12px 0 0; }
+  ol.steps li { margin-bottom: 8px; }
+  .res { font-size: 13px; margin-left: 8px; }
+  .res.ok { color: var(--ok); } .res.bad { color: var(--bad); }
+  .watch { background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Which stage moves should be allowed?</h1>
+  <p class="lede">An application moves through <b>Applied → Screening → Interview → Final Review → Offer → Hired</b>, or leaves via <b>Rejected</b> or <b>Withdrawn</b>. This demo answers one question: <b>which set of movement rules feels right for real hiring situations?</b> Pick a rule set below, then run the guided scenarios. Run the same scenario under different rule sets to compare them.</p>
+
+  <section>
+    <h2>1 · Rule set</h2>
+    <div class="grid4" id="rules"></div>
+  </section>
+
+  <section>
+    <h2>2 · Current application</h2>
+    <div class="pipeline" id="pipeline"></div>
+    <dl id="fields"></dl>
+    <div id="banner"></div>
+    <ul class="log" id="log"></ul>
+  </section>
+
+  <section>
+    <h2>3 · Free play</h2>
+    <div class="row" style="margin-bottom:12px">
+      <span style="color:var(--muted)">Acting as:</span>
+      <div class="seg row" id="roles" style="gap:0"></div>
+    </div>
+    <p style="color:var(--muted);font-size:13px">Green = allowed right now. Dashed = blocked (click anyway to see why).</p>
+    <div class="row" id="moves"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="reopen">Reopen application</button>
+      <button class="btn" id="reset">Start over (back to Applied)</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>4 · Guided scenarios</h2>
+    <div class="tabs" id="tabs"></div>
+    <div id="scenario"></div>
+  </section>
+</main>
+
+<script>
+/* ===================== Pure logic module (no DOM) ===================== */
+const PIPELINE = ['Applied', 'Screening', 'Interview', 'Final Review', 'Offer', 'Hired'];
+const EXITS = ['Rejected', 'Withdrawn'];
+const STAGES = [...PIPELINE, ...EXITS];
+const FINAL = ['Hired', 'Rejected', 'Withdrawn'];
+const isFinal = s => FINAL.includes(s);
+
+const RULE_SETS = {
+  A: { name: 'A · Free movement', summary: 'Any stage can move to any other stage. Nothing is ever final.', reopen: false },
+  B: { name: 'B · One step at a time', summary: 'Forward 1 step, back 1 step, reject/withdraw from any active stage. Hired/Rejected/Withdrawn are final; a Hiring Manager can Reopen.', reopen: true },
+  C: { name: 'C · Skip ahead allowed', summary: 'Forward any number of steps, back 1 step, reject/withdraw from any active stage. Hired/Rejected/Withdrawn are final; a Hiring Manager can Reopen.', reopen: true },
+  D: { name: 'D · Forward only', summary: 'Forward 1 step only, reject/withdraw from any active stage. No going back and no reopening, ever.', reopen: false },
+};
+
+const ROLE_NAMES = { staff: 'Staff member', manager: 'Hiring Manager' };
+const yes = msg => ({ ok: true, msg });
+const no = msg => ({ ok: false, msg });
+
+function initialState(ruleSet = 'C', stage = 'Applied', role = 'staff') {
+  return { ruleSet, role, stage, stageBeforeFinal: null, last: null, history: [] };
+}
+
+function checkMove(s, to) {
+  const from = s.stage;
+  if (from === to) return no(`It is already in ${to}.`);
+  if (s.ruleSet === 'A') return yes();
+  if (isFinal(from)) {
+    return no(`${from} is a final stage. ` + (RULE_SETS[s.ruleSet].reopen
+      ? 'Only a Hiring Manager can undo it, using “Reopen application”.'
+      : 'Under this rule set it can never be undone.'));
+  }
+  if (EXITS.includes(to)) return yes();
+  const step = PIPELINE.indexOf(to) - PIPELINE.indexOf(from);
+  if (step > 0) {
+    if (s.ruleSet === 'C' || step === 1) return yes();
+    return no(`Can only move forward one step at a time (next is ${PIPELINE[PIPELINE.indexOf(from) + 1]}).`);
+  }
+  if (s.ruleSet === 'D') return no('Moving backward is not allowed under this rule set.');
+  if (step === -1) return yes();
+  return no(`Can only move back one step (the previous stage is ${PIPELINE[PIPELINE.indexOf(from) - 1]}).`);
+}
+
+function checkReopen(s) {
+  if (!RULE_SETS[s.ruleSet].reopen) return no('This rule set has no Reopen action.');
+  if (!isFinal(s.stage)) return no('Only Hired, Rejected, or Withdrawn applications can be reopened.');
+  if (s.role !== 'manager') return no('Only a Hiring Manager can reopen an application.');
+  return yes();
+}
+
+function apply(s, action) {
+  const who = ROLE_NAMES[s.role];
+  const log = (text, ok) => [...s.history, { who, text, ok }];
+  switch (action.type) {
+    case 'move': {
+      const r = checkMove(s, action.to);
+      const label = `Move ${s.stage} → ${action.to}`;
+      if (!r.ok) return { ...s, last: { ok: false, text: `Blocked: ${label}. ${r.msg}` }, history: log(label + ' (blocked)', false) };
+      return {
+        ...s, stage: action.to,
+        stageBeforeFinal: isFinal(action.to) && !isFinal(s.stage) ? s.stage : s.stageBeforeFinal,
+        last: { ok: true, text: `Moved: ${s.stage} → ${action.to}` }, history: log(label, true),
+      };
+    }
+    case 'reopen': {
+      const r = checkReopen(s);
+      if (!r.ok) return { ...s, last: { ok: false, text: `Blocked: Reopen. ${r.msg}` }, history: log('Reopen (blocked)', false) };
+      const back = s.stageBeforeFinal || 'Applied';
+      return { ...s, stage: back, stageBeforeFinal: null,
+        last: { ok: true, text: `Reopened: ${s.stage} → back to ${back}` }, history: log(`Reopen ${s.stage} → ${back}`, true) };
+    }
+    case 'role':
+      return { ...s, role: action.role, last: { info: true, text: `Now acting as ${ROLE_NAMES[action.role]}.` } };
+    case 'rules':
+      return { ...s, ruleSet: action.ruleSet, last: { info: true, text: `Switched to rule set ${RULE_SETS[action.ruleSet].name}.` } };
+    default:
+      return s;
+  }
+}
+
+/* ===================== Scenarios ===================== */
+const mv = to => ({ type: 'move', to, label: `Move to ${to}` });
+const asRole = role => ({ type: 'role', role, label: `Switch to ${ROLE_NAMES[role]}` });
+const reopen = { type: 'reopen', label: 'Reopen application' };
+
+const SCENARIOS = [
+  { title: 'Happy path', start: 'Applied',
+    desc: 'A normal candidate goes through every stage and gets hired.',
+    watch: 'Every rule set should allow this. If one doesn’t, it’s broken.',
+    steps: [mv('Screening'), mv('Interview'), mv('Final Review'), mv('Offer'), mv('Hired')] },
+  { title: 'Strong referral', start: 'Applied',
+    desc: 'The VP refers a candidate and says “skip the phone screen, bring them straight in to interview.”',
+    watch: 'Which rule sets let you skip Screening? Under the others, staff must click through Screening just to satisfy the system.',
+    steps: [mv('Interview')] },
+  { title: 'Mis-click forward', start: 'Screening',
+    desc: 'Staff meant to click Interview but hit Offer by accident, then try to fix it.',
+    watch: 'Under C the mistake goes through, but “back one step” only reaches Final Review, not Interview. Is that acceptable? Under B the mistake is blocked in the first place.',
+    steps: [mv('Offer'), mv('Interview'), mv('Final Review'), mv('Interview')] },
+  { title: 'Rejected by mistake', start: 'Interview',
+    desc: 'A staff member rejects the wrong candidate and tries to undo it.',
+    watch: 'Staff can’t undo a final stage directly. A Hiring Manager can Reopen (B, C). Under D the candidate is stuck forever; under A anyone can undo it.',
+    steps: [mv('Rejected'), mv('Interview'), asRole('manager'), reopen] },
+  { title: 'Candidate comes back', start: 'Final Review',
+    desc: 'A candidate withdraws, then calls a week later saying they’re interested again.',
+    watch: 'Reopen sends them back to where they were (Final Review). Can the process continue from there?',
+    steps: [mv('Withdrawn'), asRole('manager'), reopen, mv('Offer')] },
+  { title: 'Applied → Hired', start: 'Applied',
+    desc: 'Someone moves a brand-new applicant straight to Hired.',
+    watch: 'Rule set C allows this, because Hired is just “further forward.” Is that OK, or should Hired only be reachable from Offer?',
+    steps: [mv('Hired')] },
+  { title: 'Offer rescinded after hire', start: 'Offer',
+    desc: 'The candidate is marked Hired, then fails a background check and must be rejected.',
+    watch: 'Even a Hiring Manager can’t jump Hired → Rejected directly. They must Reopen (back to Offer) and then Reject. Is the two-step process fine?',
+    steps: [mv('Hired'), mv('Rejected'), asRole('manager'), mv('Rejected'), reopen, mv('Rejected')] },
+];
+
+/* ===================== Page shell ===================== */
+let state = initialState();
+let tab = 0, stepIdx = 0, stepResults = [];
+const $ = id => document.getElementById(id);
+
+function dispatch(action) { state = apply(state, action); render(); }
+
+function render() {
+  $('rules').innerHTML = Object.entries(RULE_SETS).map(([k, r]) =>
+    `<button class="rule ${state.ruleSet === k ? 'on' : ''}" data-rule="${k}"><b>${r.name}</b><span>${r.summary}</span></button>`).join('');
+
+  $('pipeline').innerHTML = PIPELINE.map((st, i) =>
+    `<span class="chip ${st === state.stage ? 'current' : ''} ${isFinal(st) ? 'final' : ''}">${st}</span>${i < PIPELINE.length - 1 ? '<span class="arrow">→</span>' : ''}`).join('')
+    + '<span class="sep"></span>' + EXITS.map(st => `<span class="chip final ${st === state.stage ? 'current' : ''}">${st}</span>`).join('');
+
+  $('fields').innerHTML = `
+    <dt>Current stage</dt><dd>${state.stage}${isFinal(state.stage) ? ' (final)' : ''}</dd>
+    <dt>Acting as</dt><dd>${ROLE_NAMES[state.role]}</dd>
+    <dt>Rule set</dt><dd>${RULE_SETS[state.ruleSet].name}</dd>
+    <dt>Reopen would return to</dt><dd>${isFinal(state.stage) && RULE_SETS[state.ruleSet].reopen ? (state.stageBeforeFinal || 'Applied') : '—'}</dd>
+    <dt>Allowed moves now</dt><dd>${[...STAGES.filter(t => checkMove(state, t).ok), ...(checkReopen(state).ok ? ['Reopen'] : [])].join(', ') || 'None'}</dd>`;
+
+  const l = state.last;
+  $('banner').innerHTML = l ? `<div class="banner ${l.info ? 'info' : l.ok ? 'ok' : 'bad'}">${l.text}</div>` : '';
+  $('log').innerHTML = state.history.slice().reverse().map(h =>
+    `<li class="${h.ok ? '' : 'x'}">${h.ok ? '✓' : '✗'} ${h.who}: ${h.text}</li>`).join('');
+
+  $('roles').innerHTML = Object.entries(ROLE_NAMES).map(([k, n]) =>
+    `<button class="btn ${state.role === k ? 'on' : ''}" data-role="${k}">${n}</button>`).join('');
+  $('moves').innerHTML = STAGES.filter(t => t !== state.stage).map(t =>
+    `<button class="btn ${checkMove(state, t).ok ? 'allowed' : 'blocked'}" data-move="${t}">Move to ${t}</button>`).join('');
+  $('reopen').className = 'btn ' + (checkReopen(state).ok ? 'allowed' : 'blocked');
+
+  renderScenario();
+}
+
+function renderScenario() {
+  $('tabs').innerHTML = SCENARIOS.map((sc, i) =>
+    `<button class="${i === tab ? 'on' : ''}" data-tab="${i}">${sc.title}</button>`).join('');
+  const sc = SCENARIOS[tab];
+  $('scenario').innerHTML = `
+    <p>${sc.desc}</p>
+    <p class="watch"><b>Watch for:</b> ${sc.watch}</p>
+    <div class="row"><button class="btn primary" id="startSc">Start scenario (resets to ${sc.start}, Staff member, rule set ${state.ruleSet})</button></div>
+    <ol class="steps">${sc.steps.map((st, i) => {
+      const r = stepResults[i];
+      return `<li><button class="btn" data-step="${i}" ${i !== stepIdx || stepIdx < 0 ? 'disabled' : ''}>${st.label}</button>`
+        + (r ? `<span class="res ${r.info ? '' : r.ok ? 'ok' : 'bad'}">${r.info ? '✓ ' + r.text : (r.ok ? '✓ ' : '✗ ') + r.text}</span>` : '') + '</li>';
+    }).join('')}</ol>`;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  if (t.dataset.rule) dispatch({ type: 'rules', ruleSet: t.dataset.rule });
+  else if (t.dataset.role) dispatch({ type: 'role', role: t.dataset.role });
+  else if (t.dataset.move) dispatch({ type: 'move', to: t.dataset.move });
+  else if (t.id === 'reopen') dispatch({ type: 'reopen' });
+  else if (t.id === 'reset') { state = initialState(state.ruleSet); render(); }
+  else if (t.dataset.tab) { tab = +t.dataset.tab; stepIdx = -1; stepResults = []; render(); }
+  else if (t.id === 'startSc') { state = initialState(state.ruleSet, SCENARIOS[tab].start); stepIdx = 0; stepResults = []; render(); }
+  else if (t.dataset.step) {
+    dispatch(SCENARIOS[tab].steps[stepIdx]);
+    stepResults[stepIdx] = state.last; stepIdx++; renderScenario();
+  }
+});
+
+stepIdx = -1;
+render();
+</script>
+</body>
+</html>
