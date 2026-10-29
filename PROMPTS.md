@@ -28,6 +28,36 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-29 — Wrote CLAUDE.md and implemented Phase 1 (project skeleton and access control)
+
+### Prompts
+1. "Create the initial CLAUDE.md for this project. Keep it between 20-30 lines long." (pasted rules: only a one-line description, the stack and package manager, durable PRD architecture decisions, and pointers to the PRD, plan, and prototypes; no commands, predicted structure, business rules, or invented conventions)
+2. "In CLAUDE.md remove feature-specific business rules and anything that predicts commands or project structure. Keep only the project description, technology stack, document pointers, and durable architecture decisions from the PRD."
+3. "commit CLAUDE.md to github"
+4. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 1`
+5. "approved" (the three TDD behaviors: is-manager helper, anonymous redirect to login, manager-only 403)
+6. "I approve" (behavior 1 RED test)
+7. "yes, move on to behavior 2"
+8. "Approved" (behavior 2 RED test)
+9. "yes, move on to behavior 3"
+10. "Approved" (behavior 3 RED test)
+11. "Whenever I open http://127.0.0.1:8000/ I am met with a white screen."
+12. "Everything works"
+
+### Summary
+- **Outcome:** Wrote and trimmed `CLAUDE.md` (stack, durable auth/role and stage-change architecture decisions, doc pointers) and pushed it. Built Phase 1: a uv project with Django 6.1, django-tailwind-cli with DaisyUI, HTMX from a pinned CDN, Ruff, and pytest-django. Added the `config` project and `hiring` app, `LoginRequiredMiddleware` for site-wide login, Django auth login/logout with a styled login page, a data migration that creates the "Hiring Manager" group, `is_hiring_manager` and a `hiring_manager_required` decorator in `hiring/permissions.py`, a friendly `403.html`, a home page, and a placeholder manager-only "Manager tools" page linked in the nav for managers. Three behaviors were built test-first (RED, then GREEN), plus a normal test for the group's existence; 4 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - CLAUDE.md first draft named the `hiring` app, stage-rule details, and the Hiring Manager group. I asked for a second pass that removed project structure and feature rules. Claude kept the stage-change transaction decision and flagged it as the closest call.
+  - The shared role helper is a decorator, not a mixin, because the views are function-based (the PRD allows "helper or mixin").
+  - The manager-only page is a placeholder test view, as the plan allows, since Phase 1 has no real manager feature.
+- **Sideways:**
+  - Claude reported CLAUDE.md as 24 lines; git showed 27. Corrected after the commit.
+  - A PowerShell string replace on `settings.py` silently did nothing (CRLF line endings); redone with Edit.
+  - `LoginRequiredMiddleware` was added before its test, so the RED step would not have failed. Claude removed it, showed RED, then added it back as the GREEN step.
+  - Claude said logged-out visitors to `/admin/` would go to the app login page; the smoke test showed the admin keeps its own login. Corrected before manual verification.
+  - Removing an unverified SRI hash from the HTMX `<script>` tag also deleted its closing `>`, which made every page render as a white screen in the browser. Tests passed because they only check status codes and text. I caught it during manual verification, and Claude fixed the tag.
+  - While stopping its own test servers, Claude force-stopped all project `python` processes and all `uv` processes, which likely killed my running dev server. Claude disclosed it and I restarted the server.
+
 ## 2026-10-26 — Grilled the project idea, prototyped stage rules, wrote the PRD
 
 ### Prompts

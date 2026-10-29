@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Django / Tailwind (django-tailwind-cli)
+db.sqlite3
+.django_tailwind_cli/
+assets/css/
+staticfiles/

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Not allowed{% endblock %}
+
+{% block content %}
+  <div role="alert" class="alert alert-warning max-w-xl mx-auto mt-10">
+    <div>
+      <h1 class="font-bold text-lg">You're not allowed to do that</h1>
+      <p>This action is limited to Hiring Managers. Ask an administrator if you need access.</p>
+      <a href="{% url 'hiring:home' %}" class="link">Back to home</a>
+    </div>
+  </div>
+{% endblock %}
