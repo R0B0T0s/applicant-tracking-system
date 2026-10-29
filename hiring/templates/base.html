@@ -11,6 +11,9 @@
   <nav class="navbar bg-base-100 shadow-sm">
     <div class="flex-1">
       <a href="{% url 'hiring:home' %}" class="btn btn-ghost text-xl">Applicant Tracking</a>
+      {% if user.is_authenticated %}
+        <a href="{% url 'hiring:candidate_list' %}" class="btn btn-sm btn-ghost">Candidates</a>
+      {% endif %}
     </div>
     {% if user.is_authenticated %}
       <div class="flex-none flex items-center gap-2">

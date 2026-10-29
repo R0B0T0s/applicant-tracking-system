@@ -28,6 +28,30 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-29 — Implemented Phase 2 (candidates: create, list, search, detail, edit)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement phase 2`
+2. "Approved" (the three TDD behaviors: lowercase email storage, case-insensitive duplicate email form error, search by name and email)
+3. "approve" (behavior 2 RED test, lowercase storage)
+4. "yes, move on"
+5. "approved" (behavior 1 RED test, duplicate email)
+6. "move on"
+7. "Approved" (behavior 3 RED test, search)
+8. "Continue with the rest of the phase"
+9. "Everything works"
+
+### Summary
+- **Outcome:** Added the `Candidate` model (required and optional fields, a fixed source choice plus source details, and `is_archived`/`archived_at` for Phase 3), with email lowercased in `save()` and a unique constraint with a clear error message. Added `CandidateForm`, whose `clean_email` lowercases the email before Django's unique check. Added list (with search on first name, last name, and email), create, detail, and edit pages styled with DaisyUI 5, a "Candidates" nav link and home-page button, and admin registration with search and filters. Three behaviors were built test-first (RED, then GREEN). Normal tests cover login-required on all four candidate pages, page rendering, create and detail, required fields, editing, and editing into another candidate's email. 16 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - Built behavior 2 (lowercase storage) before behavior 1 (duplicate email), because the duplicate check depends on it.
+  - Search matches each field on its own, so a full name like "Ada Lovelace" doesn't match. Claude flagged this as a possible follow-up; the plan asks only for matching on name and email.
+- **Sideways:**
+  - Behavior 1's first RED run crashed with an `IntegrityError` instead of failing an assertion. Claude explained that the crash was the bug itself (the form's exact-match unique check missed the duplicate, and the database's unique constraint then rejected the lowercased email), and set `client.raise_request_exception = False` so the test failed on `500 == 200` without changing its assertions.
+  - Adding the custom unique error message produced a second migration. Since nothing was committed, Claude deleted and regenerated `0002_candidate` instead of keeping a `0003`.
+  - A normal test exposed that `CandidateForm(request.POST or None)` treated a POST with no data as a GET, so it returned no errors. Both views now check `request.method`.
+  - Claude checked the built CSS to confirm DaisyUI 5 before relying on its `fieldset` classes. The Phase 1 login page still uses DaisyUI 4's `form-control`, which is harmless and was left alone.
+
 ## 2026-10-29 — Wrote CLAUDE.md and implemented Phase 1 (project skeleton and access control)
 
 ### Prompts

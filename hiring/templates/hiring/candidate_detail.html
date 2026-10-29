@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ candidate }}{% endblock %}
+
+{% block content %}
+  <div class="mb-4">
+    <a href="{% url 'hiring:candidate_list' %}" class="link link-hover text-sm">&larr; All candidates</a>
+  </div>
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h1 class="card-title text-2xl">{{ candidate }}</h1>
+        <a href="{% url 'hiring:candidate_edit' candidate.pk %}" class="btn btn-sm btn-primary">Edit</a>
+      </div>
+      <dl class="grid grid-cols-1 sm:grid-cols-[12rem_1fr] gap-x-4 gap-y-2 mt-2">
+        <dt class="font-semibold">Email</dt>
+        <dd><a href="mailto:{{ candidate.email }}" class="link">{{ candidate.email }}</a></dd>
+        <dt class="font-semibold">Phone</dt>
+        <dd>{{ candidate.phone|default:"—" }}</dd>
+        <dt class="font-semibold">LinkedIn/portfolio</dt>
+        <dd>{% if candidate.url %}<a href="{{ candidate.url }}" class="link" target="_blank" rel="noopener">{{ candidate.url }}</a>{% else %}—{% endif %}</dd>
+        <dt class="font-semibold">Location</dt>
+        <dd>{{ candidate.location|default:"—" }}</dd>
+        <dt class="font-semibold">Source</dt>
+        <dd>{{ candidate.get_source_display }}{% if candidate.source_details %} — {{ candidate.source_details }}{% endif %}</dd>
+        <dt class="font-semibold">Notes</dt>
+        <dd class="whitespace-pre-line">{{ candidate.notes|default:"—" }}</dd>
+      </dl>
+    </div>
+  </div>
+{% endblock %}
