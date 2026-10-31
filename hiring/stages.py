@@ -13,9 +13,14 @@ WITHDRAWN = "withdrawn"
 ACTIVE_STAGES = [APPLIED, SCREENING, INTERVIEW, FINAL_REVIEW, OFFER]
 FINAL_STAGES = [HIRED, REJECTED, WITHDRAWN]
 
+# Not a stage: a move target meaning "back to the stage before this one".
+REOPEN = "reopen"
 
-def allowed_moves(stage):
+
+def allowed_moves(stage, can_reopen=False):
     """Return the stages an application in `stage` may move to, in display order."""
+    if stage in FINAL_STAGES:
+        return [REOPEN] if can_reopen else []
     if stage not in ACTIVE_STAGES:
         return []
     position = ACTIVE_STAGES.index(stage)
@@ -27,5 +32,5 @@ def allowed_moves(stage):
     return moves + [REJECTED, WITHDRAWN]
 
 
-def is_allowed(from_stage, to_stage):
-    return to_stage in allowed_moves(from_stage)
+def is_allowed(from_stage, to_stage, can_reopen=False):
+    return to_stage in allowed_moves(from_stage, can_reopen)

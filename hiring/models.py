@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from . import stages
-from .permissions import HIRING_MANAGER_GROUP
+from .permissions import HIRING_MANAGER_GROUP, is_hiring_manager
 
 
 class Candidate(models.Model):
@@ -156,6 +156,13 @@ class JobOpening(models.Model):
             )
 
 
+def move_label(stage):
+    """Display label for a move target: a stage, or Reopen."""
+    if stage == stages.REOPEN:
+        return "Reopen"
+    return Application.Stage(stage).label if stage in Application.Stage else stage
+
+
 class ApplicationManager(models.Manager):
     def create_application(self, candidate, job_opening, user):
         """Create an application in Applied and record its first history entry."""
@@ -230,11 +237,12 @@ class Application(models.Model):
 
     def move_to_stage(self, stage, user):
         """Move to `stage` if the rules allow it, and record the change."""
-        if not stages.is_allowed(self.stage, stage):
+        if not stages.is_allowed(self.stage, stage, is_hiring_manager(user)):
             raise ValidationError(
-                f"Can't move from {self.get_stage_display()} to "
-                f"{self.Stage(stage).label if stage in self.Stage else stage}."
+                f"Can't move from {self.get_stage_display()} to {move_label(stage)}."
             )
+        if stage == stages.REOPEN:
+            stage = self.reopen_stage()
         with transaction.atomic():
             from_stage = self.stage
             self.stage = stage
@@ -242,6 +250,10 @@ class Application(models.Model):
             self.stage_changes.create(
                 from_stage=from_stage, to_stage=stage, changed_by=user
             )
+
+    def reopen_stage(self):
+        """The stage a Reopen returns to: where the latest change came from."""
+        return self.stage_changes.last().from_stage
 
 
 class StageChange(models.Model):

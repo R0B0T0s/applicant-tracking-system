@@ -23,9 +23,20 @@ def staff_client(client, staff):
 
 
 @pytest.fixture
-def job():
+def manager():
     manager = User.objects.create_user("manager", password="pw")
     manager.groups.add(Group.objects.get(name=HIRING_MANAGER_GROUP))
+    return manager
+
+
+@pytest.fixture
+def manager_client(client, manager):
+    client.force_login(manager)
+    return client
+
+
+@pytest.fixture
+def job(manager):
     return JobOpening.objects.create(
         title="Backend Engineer",
         department="Engineering",
@@ -181,3 +192,74 @@ def test_job_detail_links_to_board(staff_client, job):
     response = staff_client.get(job.get_absolute_url())
 
     assertContains(response, reverse("hiring:job_board", args=[job.pk]))
+
+
+@pytest.mark.django_db
+def test_tampered_reopen_from_staff_is_refused(staff_client, staff, application):
+    application.move_to_stage(Application.Stage.OFFER, staff)
+    application.move_to_stage(Application.Stage.HIRED, staff)
+
+    response = staff_client.post(
+        reverse("hiring:application_move", args=[application.pk]),
+        {"stage": "reopen"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    assertTemplateUsed(response, "hiring/_board.html")
+    card = response.context["final_columns"][0][1][0]
+    assert card.pk == application.pk
+    assert card.error == "Can't move from Hired to Reopen."
+    application.refresh_from_db()
+    assert application.stage == Application.Stage.HIRED
+    assert application.stage_changes.count() == 3
+
+
+@pytest.mark.django_db
+def test_managers_see_reopen_on_final_stage_cards(
+    manager_client, staff, job, application
+):
+    application.move_to_stage(Application.Stage.OFFER, staff)
+    application.move_to_stage(Application.Stage.HIRED, staff)
+
+    response = manager_client.get(reverse("hiring:job_board", args=[job.pk]))
+
+    card = response.context["final_columns"][0][1][0]
+    assert card.moves == [("reopen", "Reopen (back to Offer)")]
+    assertContains(
+        response, '<option value="reopen">Reopen (back to Offer)</option>', html=True
+    )
+
+
+@pytest.mark.django_db
+def test_managers_do_not_see_reopen_on_active_cards(manager_client, job, application):
+    response = manager_client.get(reverse("hiring:job_board", args=[job.pk]))
+
+    card = response.context["active_columns"][0][1][0]
+    assert "reopen" not in [value for value, _ in card.moves]
+    assertContains(response, 'value="reopen"', count=0)
+
+
+@pytest.mark.django_db
+def test_manager_reopen_post_returns_board_with_card_back_in_its_column(
+    manager_client, manager, staff, application
+):
+    application.move_to_stage(Application.Stage.SCREENING, staff)
+    application.move_to_stage(Application.Stage.REJECTED, staff)
+
+    response = manager_client.post(
+        reverse("hiring:application_move", args=[application.pk]),
+        {"stage": "reopen"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 200
+    assertTemplateUsed(response, "hiring/_board.html")
+    assert _card_names(response.context["active_columns"][1]) == ["Jane Doe"]
+    assert _card_names(response.context["final_columns"][1]) == []
+    latest = application.stage_changes.last()
+    assert (latest.from_stage, latest.to_stage, latest.changed_by) == (
+        Application.Stage.REJECTED,
+        Application.Stage.SCREENING,
+        manager,
+    )

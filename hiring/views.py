@@ -4,9 +4,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .forms import ApplicationForm, CandidateForm, JobOpeningForm, SkillForm
-from .models import Application, Candidate, JobOpening, Skill
-from .permissions import hiring_manager_required
-from .stages import ACTIVE_STAGES, FINAL_STAGES, allowed_moves
+from .models import Application, Candidate, JobOpening, Skill, move_label
+from .permissions import hiring_manager_required, is_hiring_manager
+from .stages import ACTIVE_STAGES, FINAL_STAGES, REOPEN, allowed_moves
 
 
 def home(request):
@@ -221,7 +221,7 @@ def _application_create(request, form, back_to):
 
 def job_board(request, pk):
     job = get_object_or_404(JobOpening, pk=pk)
-    return render(request, "hiring/job_board.html", _board_context(job))
+    return render(request, "hiring/job_board.html", _board_context(job, request.user))
 
 
 @require_POST
@@ -236,20 +236,22 @@ def application_move(request, pk):
     return render(
         request,
         "hiring/_board.html",
-        _board_context(application.job_opening, errors),
+        _board_context(application.job_opening, request.user, errors),
     )
 
 
-def _board_context(job, errors=None):
+def _board_context(job, user, errors=None):
     """Group the job's applications by stage, with each card's allowed moves."""
     errors = errors or {}
+    can_reopen = is_hiring_manager(user)
     labels = dict(Application.Stage.choices)
     by_stage = {stage: [] for stage in labels}
     for application in job.applications.select_related("candidate").order_by(
         "candidate__last_name", "candidate__first_name"
     ):
         application.moves = [
-            (stage, labels[stage]) for stage in allowed_moves(application.stage)
+            (stage, _move_option_label(application, stage))
+            for stage in allowed_moves(application.stage, can_reopen)
         ]
         application.error = errors.get(application.pk)
         by_stage[application.stage].append(application)
@@ -258,3 +260,11 @@ def _board_context(job, errors=None):
         "active_columns": [(labels[s], by_stage[s]) for s in ACTIVE_STAGES],
         "final_columns": [(labels[s], by_stage[s]) for s in FINAL_STAGES],
     }
+
+
+def _move_option_label(application, stage):
+    if stage == REOPEN:
+        return (
+            f"{move_label(REOPEN)} (back to {move_label(application.reopen_stage())})"
+        )
+    return move_label(stage)

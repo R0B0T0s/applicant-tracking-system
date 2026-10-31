@@ -28,6 +28,30 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-31 — Implemented Phase 8 (manager reopen of final-stage applications)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 8`
+2. "I approve" (the three TDD behaviors: the rules offer Reopen only to managers and only from final stages, Reopen returns to the previous stage and writes a StageChange, and a tampered Reopen POST from staff is refused)
+3. "I approve" (behavior 1 RED test)
+4. "Yes, move on to behavior 2"
+5. "I approve" (behavior 2 RED test)
+6. "Yes, move on to behavior 3"
+7. "I approve" (behavior 3 RED test)
+8. "Manual verification passed"
+
+### Summary
+- **Outcome:** Added a `REOPEN` move target to `hiring/stages.py`. `allowed_moves(stage, can_reopen=False)` and `is_allowed()` offer it only from Hired, Rejected, or Withdrawn, and only when `can_reopen` is true; the module stays pure. `Application.move_to_stage()` passes `is_hiring_manager(user)` to the rules and, on Reopen, moves to `reopen_stage()` (the from-stage of the latest StageChange), recording it as an ordinary StageChange in the same transaction. A new `move_label()` gives readable error text ("Can't move from Hired to Reopen."). The board passes the user into `_board_context`, so managers see "Reopen (back to <stage>)" on final-stage cards and staff still see no dropdown there. Three behaviors were built test-first (RED, then GREEN). Normal tests cover the manager dropdown on final and active cards, a successful manager Reopen through the HTMX endpoint, Reopen refused from an active stage, and staff refused at the model level. 105 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - Reopen is a pseudo-target (`"reopen"`) sent through the existing move endpoint and `move_to_stage`, rather than a separate reopen endpoint, so it uses the same rules and transaction as every other move.
+  - The dropdown option names the return stage ("Reopen (back to Offer)") instead of a bare "Reopen".
+- **Sideways:**
+  - At behavior 1's RED step, the active-stage cases already passed because the stub ignored `can_reopen`; Claude called this out and kept them as guards.
+  - For behavior 2 to fail on an assertion rather than a `ValidationError`, the manager check was wired into `move_to_stage` as scaffolding first; the RED showed the literal `'reopen'` saved as the stage.
+  - Behavior 3's refusal already worked from that scaffolding; its RED was only the error wording ("reopen" vs. "Reopen"), which Claude disclosed.
+  - Ruff reformatted two files; no behavior changed.
+  - CLAUDE.md still has uncommitted edits from before this session; they were left out of the Phase 8 commit.
+
 ## 2026-10-30 — Implemented Phase 7 (stage rules and the Kanban board)
 
 ### Prompts
