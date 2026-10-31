@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{% if skill %}Rename {{ skill }}{% else %}New skill{% endif %}{% endblock %}
+
+{% block content %}
+  <div class="card bg-base-100 shadow max-w-xl mx-auto">
+    <div class="card-body">
+      <h1 class="card-title text-2xl">{% if skill %}Rename {{ skill }}{% else %}New skill{% endif %}</h1>
+      {% if form.non_field_errors %}
+        <div role="alert" class="alert alert-error">
+          {% for error in form.non_field_errors %}<span>{{ error }}</span>{% endfor %}
+        </div>
+      {% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% with field=form.name %}
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">{{ field.label }} *</legend>
+            <input type="text" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}" class="input w-full {% if field.errors %}input-error{% endif %}" autofocus>
+            {% for error in field.errors %}<p class="label text-error">{{ error }}</p>{% endfor %}
+          </fieldset>
+        {% endwith %}
+        <div class="flex gap-2 justify-end mt-4">
+          <a href="{% url 'hiring:skill_list' %}" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

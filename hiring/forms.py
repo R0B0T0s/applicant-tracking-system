@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Candidate, JobOpening
+from .models import Candidate, JobOpening, Skill
 
 
 class CandidateForm(forms.ModelForm):
@@ -38,5 +38,15 @@ class JobOpeningForm(forms.ModelForm):
             "salary_min",
             "salary_max",
             "description",
+            "skills",
         ]
-        widgets = {"description": forms.Textarea(attrs={"rows": 6})}
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 6}),
+            "skills": forms.CheckboxSelectMultiple,
+        }
+
+
+class SkillForm(forms.ModelForm):
+    class Meta:
+        model = Skill
+        fields = ["name"]

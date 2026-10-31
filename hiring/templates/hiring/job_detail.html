@@ -33,6 +33,10 @@
           {% elif job.salary_max is not None %}Up to ${{ job.salary_max|floatformat:"0g" }}
           {% else %}—{% endif %}
         </dd>
+        <dt class="font-semibold">Skills</dt>
+        <dd class="flex flex-wrap gap-1">
+          {% for skill in job.skills.all %}<span class="badge badge-outline">{{ skill.name }}</span>{% empty %}—{% endfor %}
+        </dd>
         <dt class="font-semibold">Created</dt>
         <dd>{{ job.created_at|date:"M j, Y" }}</dd>
         <dt class="font-semibold">Description</dt>

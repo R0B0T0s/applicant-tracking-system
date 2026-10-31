@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.urls import reverse
 
 from .permissions import HIRING_MANAGER_GROUP
@@ -47,6 +48,35 @@ class Candidate(models.Model):
         return reverse("hiring:candidate_detail", args=[self.pk])
 
 
+class Skill(models.Model):
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name"),
+                name="unique_skill_name_ci",
+                violation_error_message="A skill with this name already exists.",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        self.name = self.name.strip()
+        super().save(*args, **kwargs)
+
+    def validate_constraints(self, exclude=None):
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            # The Lower("name") constraint can't name its field, so Django
+            # reports it as a non-field error. Put it on the name field.
+            raise ValidationError({"name": error.messages}) from error
+
+
 class JobOpening(models.Model):
     class EmploymentType(models.TextChoices):
         FULL_TIME = "full_time", "Full-time"
@@ -80,6 +110,7 @@ class JobOpening(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     closed_at = models.DateTimeField(null=True, blank=True)
+    skills = models.ManyToManyField(Skill, blank=True, related_name="job_openings")
 
     class Meta:
         ordering = ["-created_at"]

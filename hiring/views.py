@@ -1,9 +1,9 @@
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import CandidateForm, JobOpeningForm
-from .models import Candidate, JobOpening
+from .forms import CandidateForm, JobOpeningForm, SkillForm
+from .models import Candidate, JobOpening, Skill
 from .permissions import hiring_manager_required
 
 
@@ -108,7 +108,10 @@ def job_list(request):
 
 
 def job_detail(request, pk):
-    job = get_object_or_404(JobOpening.objects.select_related("hiring_manager"), pk=pk)
+    job = get_object_or_404(
+        JobOpening.objects.select_related("hiring_manager").prefetch_related("skills"),
+        pk=pk,
+    )
     return render(request, "hiring/job_detail.html", {"job": job})
 
 
@@ -133,3 +136,47 @@ def job_edit(request, pk):
     else:
         form = JobOpeningForm(instance=job)
     return render(request, "hiring/job_form.html", {"form": form, "job": job})
+
+
+@hiring_manager_required
+def skill_list(request):
+    skills = Skill.objects.annotate(job_count=Count("job_openings"))
+    return render(request, "hiring/skill_list.html", {"skills": skills})
+
+
+@hiring_manager_required
+def skill_create(request):
+    if request.method == "POST":
+        form = SkillForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("hiring:skill_list")
+    else:
+        form = SkillForm()
+    return render(request, "hiring/skill_form.html", {"form": form})
+
+
+@hiring_manager_required
+def skill_edit(request, pk):
+    skill = get_object_or_404(Skill, pk=pk)
+    if request.method == "POST":
+        form = SkillForm(request.POST, instance=skill)
+        if form.is_valid():
+            form.save()
+            return redirect("hiring:skill_list")
+    else:
+        form = SkillForm(instance=skill)
+    return render(request, "hiring/skill_form.html", {"form": form, "skill": skill})
+
+
+@hiring_manager_required
+def skill_delete(request, pk):
+    skill = get_object_or_404(Skill, pk=pk)
+    if request.method == "POST":
+        skill.delete()
+        return redirect("hiring:skill_list")
+    return render(
+        request,
+        "hiring/skill_delete_confirm.html",
+        {"skill": skill, "job_count": skill.job_openings.count()},
+    )

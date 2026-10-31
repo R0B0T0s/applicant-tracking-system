@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Candidate, JobOpening
+from .models import Candidate, JobOpening, Skill
 
 
 @admin.register(Candidate)
@@ -19,3 +19,9 @@ class JobOpeningAdmin(admin.ModelAdmin):
     list_display = ["title", "department", "location", "hiring_manager", "status"]
     list_filter = ["status", "employment_type", "department"]
     search_fields = ["title", "department", "location"]
+    filter_horizontal = ["skills"]
+
+
+@admin.register(Skill)
+class SkillAdmin(admin.ModelAdmin):
+    search_fields = ["name"]

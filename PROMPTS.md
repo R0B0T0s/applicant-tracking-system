@@ -28,6 +28,29 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-30 — Implemented Phase 5 (skills)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 5`
+2. "Approved" (the two TDD behaviors: trimmed, case-insensitive unique skill names at the database level, and a form error for " python " when "Python" exists)
+3. "Approved" (behavior 1 RED test)
+4. "yes, move on to behavior 2"
+5. "Approved" (behavior 2 RED test)
+6. "Continue with the rest of the phase"
+7. "Everything looks great"
+
+### Summary
+- **Outcome:** Added the `Skill` model (migration `0004_skill`). `save()` trims the name, and a `UniqueConstraint(Lower("name"))` makes the database refuse duplicates in any letter case. `Skill.validate_constraints()` moves the constraint's error onto the `name` field so forms show it under the input. Added manager-only Skills pages at `/skills/` (list with a count of openings per skill, add, rename, and delete with a confirmation page that says how many openings use the skill). Added a `skills` many-to-many on `JobOpening` (`related_name="job_openings"`), a checkbox multi-select on the job form, skill badges on the job detail page, a managers-only "Skills" nav link, a "Manage skills" button on Manager tools, and admin registration. Two behaviors were built test-first (RED, then GREEN). Normal tests cover login-required, staff 403 on every Skills page (GET and POST), the managers-only nav link, add/rename/delete, rename duplicate checks (a case-only change to the same skill is allowed), a blank name, several skills on one opening shown on the detail page, optional and editable job skills, one skill on several openings, and deleting a skill that is in use. 53 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - Claude proposed two TDD behaviors instead of three. The 403s reuse the tested `@hiring_manager_required` decorator, and the job-form multi-select uses the settled ModelForm pattern, so both got normal tests.
+  - Behavior 2 changed meaning at RED: the duplicate was already refused, but the error showed at the top of the form instead of on the Name field. Claude pointed out that the top-of-form error arguably met the acceptance criterion; I approved the test that requires the error on the field.
+- **Sideways:**
+  - When proposing behavior 2, Claude predicted the form would miss the duplicate and crash on save, as email did in Phase 2. That was wrong: Django's form field trims spaces and the form checks the database constraint before saving. Claude corrected the claim when showing the RED result.
+  - The `0004_skill` migration was regenerated twice (after adding the constraint, then after adding the `JobOpening.skills` field). It was never committed or applied.
+  - The `JobOpening.skills` field was added during behavior 2's scaffolding, because the Skills list counts openings per skill.
+  - Ruff reformatted `test_skills.py`; no behavior changed.
+  - CLAUDE.md had uncommitted edits from before this session; they were left out of the Phase 5 commit.
+
 ## 2026-10-30 — Implemented Phase 4 (job openings: create, list, search, detail, edit)
 
 ### Prompts

@@ -7,6 +7,9 @@
     <div class="card-body">
       <h1 class="card-title text-2xl">Manager tools</h1>
       <p>You are a Hiring Manager. Manager-only actions will appear here as they are built.</p>
+      <div class="card-actions">
+        <a href="{% url 'hiring:skill_list' %}" class="btn btn-primary">Manage skills</a>
+      </div>
     </div>
   </div>
 {% endblock %}

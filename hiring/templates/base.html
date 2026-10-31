@@ -19,6 +19,7 @@
     {% if user.is_authenticated %}
       <div class="flex-none flex items-center gap-2">
         {% if is_hiring_manager %}
+          <a href="{% url 'hiring:skill_list' %}" class="btn btn-sm btn-ghost">Skills</a>
           <a href="{% url 'hiring:manager_tools' %}" class="btn btn-sm btn-ghost">Manager tools</a>
           <span class="badge badge-primary">Hiring Manager</span>
         {% endif %}

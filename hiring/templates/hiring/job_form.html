@@ -14,7 +14,7 @@
       <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4" novalidate>
         {% csrf_token %}
         {% for field in form %}
-          <fieldset class="fieldset {% if field.name == 'title' or field.name == 'description' %}md:col-span-2{% endif %}">
+          <fieldset class="fieldset {% if field.name == 'title' or field.name == 'description' or field.name == 'skills' %}md:col-span-2{% endif %}">
             <legend class="fieldset-legend">{{ field.label }}{% if field.field.required %} *{% endif %}</legend>
             {% if field.name == "description" %}
               <textarea name="{{ field.html_name }}" id="{{ field.id_for_label }}" rows="6" class="textarea w-full {% if field.errors %}textarea-error{% endif %}">{{ field.value|default_if_none:"" }}</textarea>
@@ -24,6 +24,17 @@
                   <option value="{{ value }}" {% if field.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
+            {% elif field.name == "skills" %}
+              <div class="flex flex-wrap gap-x-6 gap-y-2">
+                {% for option in field %}
+                  <label class="label cursor-pointer">
+                    <input type="checkbox" name="{{ option.data.name }}" value="{{ option.data.value }}" class="checkbox checkbox-sm" {% if option.data.selected %}checked{% endif %}>
+                    <span>{{ option.choice_label }}</span>
+                  </label>
+                {% empty %}
+                  <p class="text-base-content/60">No skills yet.{% if is_hiring_manager %} <a href="{% url 'hiring:skill_list' %}" class="link">Add skills</a>.{% else %} A Hiring Manager can add them.{% endif %}</p>
+                {% endfor %}
+              </div>
             {% else %}
               <input type="{{ field.field.widget.input_type }}" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}" class="input w-full {% if field.errors %}input-error{% endif %}">
             {% endif %}
