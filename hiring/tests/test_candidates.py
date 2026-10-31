@@ -1,14 +1,23 @@
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, Permission, User
 from django.urls import reverse
 from pytest_django.asserts import assertContains, assertRedirects
 
 from hiring.models import Candidate
+from hiring.permissions import HIRING_MANAGER_GROUP
 
 
 @pytest.fixture
 def staff_client(client):
     client.force_login(User.objects.create_user("staff", password="pw"))
+    return client
+
+
+@pytest.fixture
+def manager_client(client):
+    manager = User.objects.create_user("manager", password="pw")
+    manager.groups.add(Group.objects.get(name=HIRING_MANAGER_GROUP))
+    client.force_login(manager)
     return client
 
 
@@ -30,6 +39,8 @@ def candidate():
         ("candidate_create", False),
         ("candidate_detail", True),
         ("candidate_edit", True),
+        ("candidate_archive", True),
+        ("candidate_unarchive", True),
     ],
 )
 def test_candidate_pages_require_login(client, candidate, name, needs_pk):
@@ -209,3 +220,116 @@ def test_candidate_search_matches_name_and_email(client):
     assert search("navy.mil") == {grace}
     assert search("a") == {ada, alan, grace}
     assert search("nobody") == set()
+
+
+@pytest.mark.django_db
+def test_manager_can_archive_and_unarchive_candidate(manager_client, candidate):
+    response = manager_client.post(
+        reverse("hiring:candidate_archive", args=[candidate.pk])
+    )
+
+    assertRedirects(response, candidate.get_absolute_url())
+    candidate.refresh_from_db()
+    assert candidate.is_archived is True
+    assert candidate.archived_at is not None
+
+    response = manager_client.post(
+        reverse("hiring:candidate_unarchive", args=[candidate.pk])
+    )
+
+    assertRedirects(response, candidate.get_absolute_url())
+    candidate.refresh_from_db()
+    assert candidate.is_archived is False
+    assert candidate.archived_at is None
+
+
+@pytest.mark.django_db
+def test_candidate_list_hides_archived_unless_show_archived(staff_client, candidate):
+    archived = Candidate.objects.create(
+        first_name="Old",
+        last_name="Timer",
+        email="old@example.com",
+        source=Candidate.Source.OTHER,
+        is_archived=True,
+    )
+    url = reverse("hiring:candidate_list")
+
+    default = staff_client.get(url)
+    with_archived = staff_client.get(url, {"show_archived": "1"})
+
+    assert set(default.context["candidates"]) == {candidate}
+    assert set(with_archived.context["candidates"]) == {candidate, archived}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["candidate_archive", "candidate_unarchive"])
+def test_staff_get_403_on_archive_and_unarchive(staff_client, candidate, name):
+    url = reverse(f"hiring:{name}", args=[candidate.pk])
+
+    assert staff_client.get(url).status_code == 403
+    assert staff_client.post(url).status_code == 403
+    candidate.refresh_from_db()
+    assert candidate.is_archived is False
+
+
+@pytest.mark.django_db
+def test_archive_get_shows_confirmation_without_archiving(manager_client, candidate):
+    response = manager_client.get(
+        reverse("hiring:candidate_archive", args=[candidate.pk])
+    )
+
+    assertContains(response, "Archive Jane Doe?")
+    candidate.refresh_from_db()
+    assert candidate.is_archived is False
+
+
+@pytest.mark.django_db
+def test_detail_shows_archive_controls_only_to_managers(
+    client, staff_client, candidate
+):
+    url = reverse("hiring:candidate_detail", args=[candidate.pk])
+    archive_url = reverse("hiring:candidate_archive", args=[candidate.pk])
+
+    assert archive_url not in staff_client.get(url).content.decode()
+
+    manager = User.objects.create_user("manager", password="pw")
+    manager.groups.add(Group.objects.get(name=HIRING_MANAGER_GROUP))
+    client.force_login(manager)
+    assertContains(client.get(url), archive_url)
+
+
+@pytest.mark.django_db
+def test_detail_shows_archived_state_and_unarchive_button(manager_client, candidate):
+    manager_client.post(reverse("hiring:candidate_archive", args=[candidate.pk]))
+
+    response = manager_client.get(
+        reverse("hiring:candidate_detail", args=[candidate.pk])
+    )
+
+    assertContains(response, "Archived")
+    assertContains(response, reverse("hiring:candidate_unarchive", args=[candidate.pk]))
+
+
+@pytest.mark.django_db
+def test_app_has_no_candidate_delete_action(manager_client, candidate):
+    for name in ["candidate_list", "candidate_detail", "candidate_edit"]:
+        args = [] if name == "candidate_list" else [candidate.pk]
+        response = manager_client.get(reverse(f"hiring:{name}", args=args))
+        assert "delete" not in response.content.decode().lower()
+
+
+@pytest.mark.django_db
+def test_only_superusers_can_delete_candidates_in_admin(client, candidate):
+    url = reverse("admin:hiring_candidate_delete", args=[candidate.pk])
+    admin_staff = User.objects.create_user("admin_staff", password="pw", is_staff=True)
+    admin_staff.user_permissions.add(
+        *Permission.objects.filter(content_type__app_label="hiring")
+    )
+
+    client.force_login(admin_staff)
+    assert client.post(url, {"post": "yes"}).status_code == 403
+    assert Candidate.objects.filter(pk=candidate.pk).exists()
+
+    client.force_login(User.objects.create_superuser("root", password="pw"))
+    client.post(url, {"post": "yes"})
+    assert not Candidate.objects.filter(pk=candidate.pk).exists()

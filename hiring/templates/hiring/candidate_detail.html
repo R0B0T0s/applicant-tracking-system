@@ -9,9 +9,26 @@
   <div class="card bg-base-100 shadow">
     <div class="card-body">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h1 class="card-title text-2xl">{{ candidate }}</h1>
-        <a href="{% url 'hiring:candidate_edit' candidate.pk %}" class="btn btn-sm btn-primary">Edit</a>
+        <h1 class="card-title text-2xl">
+          {{ candidate }}
+          {% if candidate.is_archived %}<span class="badge badge-warning">Archived</span>{% endif %}
+        </h1>
+        <div class="flex gap-2">
+          <a href="{% url 'hiring:candidate_edit' candidate.pk %}" class="btn btn-sm btn-primary">Edit</a>
+          {% if is_hiring_manager %}
+            {% if candidate.is_archived %}
+              <a href="{% url 'hiring:candidate_unarchive' candidate.pk %}" class="btn btn-sm">Un-archive</a>
+            {% else %}
+              <a href="{% url 'hiring:candidate_archive' candidate.pk %}" class="btn btn-sm btn-warning">Archive</a>
+            {% endif %}
+          {% endif %}
+        </div>
       </div>
+      {% if candidate.is_archived %}
+        <div role="alert" class="alert alert-warning">
+          <span>This candidate was archived on {{ candidate.archived_at|date:"M j, Y, g:i a" }}.</span>
+        </div>
+      {% endif %}
       <dl class="grid grid-cols-1 sm:grid-cols-[12rem_1fr] gap-x-4 gap-y-2 mt-2">
         <dt class="font-semibold">Email</dt>
         <dd><a href="mailto:{{ candidate.email }}" class="link">{{ candidate.email }}</a></dd>

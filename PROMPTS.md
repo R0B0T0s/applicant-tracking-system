@@ -28,6 +28,27 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-30 — Implemented Phase 3 (candidate archiving)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 3`
+2. "Approved" (the two TDD behaviors: manager archive/un-archive, and the list hiding archived candidates unless "show archived" is on)
+3. "I approve" (behavior 1 RED test)
+4. "yes, move on to behavior 2"
+5. "I approve" (behavior 2 RED test)
+6. "Continue with the rest of the phase"
+7. "Everything works"
+
+### Summary
+- **Outcome:** Added manager-only `candidate_archive` and `candidate_unarchive` views at `/candidates/<pk>/archive/` and `/unarchive/`. A GET shows a confirmation page, and a POST sets or clears `is_archived` and `archived_at`. The candidate detail page shows an "Archived" badge, the archive date, and Archive or Un-archive buttons for managers only. The candidate list hides archived candidates by default, and a "Show archived" checkbox (which works with search) shows them with a badge. The admin allows candidate deletion only for superusers. Two behaviors were built test-first (RED, then GREEN). Normal tests cover login-required, staff 403 on GET and POST, the confirmation step not archiving, manager-only controls, the archived state on the detail page, no delete action in the app, and superuser-only admin delete. 27 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - Claude proposed two TDD behaviors instead of three. The staff 403 was left to a normal test because it reuses the already-tested `@hiring_manager_required` decorator.
+  - Blocking archive while a candidate has active applications (story 14) isn't in this phase; the plan puts it in Phase 6, once applications exist.
+- **Sideways:**
+  - Behavior 1's first run failed with `NoReverseMatch`, not an assertion. Claude treated that as missing scaffolding, added the URLs and stub views, and reran to get a real RED (`assert False is True`).
+  - To confirm the admin-delete test wasn't passing by accident, Claude temporarily replaced the superuser check with Django's default. The test failed, and the check was restored.
+  - Ruff reformatted the test file after the new tests were appended; no behavior changed.
+
 ## 2026-10-29 — Implemented Phase 2 (candidates: create, list, search, detail, edit)
 
 ### Prompts
