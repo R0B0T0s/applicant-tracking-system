@@ -2,8 +2,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import CandidateForm
-from .models import Candidate
+from .forms import CandidateForm, JobOpeningForm
+from .models import Candidate, JobOpening
 from .permissions import hiring_manager_required
 
 
@@ -93,3 +93,43 @@ def candidate_unarchive(request, pk):
         "hiring/candidate_archive_confirm.html",
         {"candidate": candidate, "archiving": False},
     )
+
+
+def job_list(request):
+    q = request.GET.get("q", "").strip()
+    jobs = JobOpening.objects.select_related("hiring_manager")
+    if q:
+        jobs = jobs.filter(
+            Q(title__icontains=q)
+            | Q(department__icontains=q)
+            | Q(location__icontains=q)
+        )
+    return render(request, "hiring/job_list.html", {"jobs": jobs, "q": q})
+
+
+def job_detail(request, pk):
+    job = get_object_or_404(JobOpening.objects.select_related("hiring_manager"), pk=pk)
+    return render(request, "hiring/job_detail.html", {"job": job})
+
+
+def job_create(request):
+    if request.method == "POST":
+        form = JobOpeningForm(request.POST)
+        if form.is_valid():
+            job = form.save()
+            return redirect(job)
+    else:
+        form = JobOpeningForm()
+    return render(request, "hiring/job_form.html", {"form": form})
+
+
+def job_edit(request, pk):
+    job = get_object_or_404(JobOpening, pk=pk)
+    if request.method == "POST":
+        form = JobOpeningForm(request.POST, instance=job)
+        if form.is_valid():
+            form.save()
+            return redirect(job)
+    else:
+        form = JobOpeningForm(instance=job)
+    return render(request, "hiring/job_form.html", {"form": form, "job": job})

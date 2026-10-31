@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Job openings{% endblock %}
+
+{% block content %}
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+    <h1 class="text-2xl font-bold">Job openings</h1>
+    <a href="{% url 'hiring:job_create' %}" class="btn btn-primary">New job opening</a>
+  </div>
+  <form method="get" class="flex flex-wrap items-center gap-2 mb-4">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search by title, department, or location" class="input w-full max-w-md">
+    <button type="submit" class="btn">Search</button>
+    {% if q %}<a href="{% url 'hiring:job_list' %}" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
+  <div class="overflow-x-auto bg-base-100 rounded-box shadow">
+    <table class="table">
+      <thead>
+        <tr><th>Title</th><th>Department</th><th>Location</th><th>Hiring manager</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+          <tr class="hover">
+            <td><a href="{{ job.get_absolute_url }}" class="link link-hover font-medium">{{ job.title }}</a></td>
+            <td>{{ job.department }}</td>
+            <td>{{ job.location }}</td>
+            <td>{{ job.hiring_manager.get_full_name|default:job.hiring_manager.get_username }}</td>
+            <td><span class="badge badge-sm {% if job.status == 'open' %}badge-success{% else %}badge-neutral{% endif %}">{{ job.get_status_display }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-center text-base-content/60">{% if q %}No job openings match "{{ q }}".{% else %}No job openings yet.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

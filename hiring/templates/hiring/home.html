@@ -4,9 +4,10 @@
   <div class="card bg-base-100 shadow">
     <div class="card-body">
       <h1 class="card-title text-2xl">Welcome, {{ user.get_username }}</h1>
-      <p>Job openings and pipelines will appear here as they are built.</p>
+      <p>Track candidates and job openings. Pipelines will appear here as they are built.</p>
       <div class="card-actions">
         <a href="{% url 'hiring:candidate_list' %}" class="btn btn-primary">View candidates</a>
+        <a href="{% url 'hiring:job_list' %}" class="btn">View job openings</a>
       </div>
     </div>
   </div>

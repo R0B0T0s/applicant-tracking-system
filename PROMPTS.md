@@ -28,6 +28,31 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-30 — Implemented Phase 4 (job openings: create, list, search, detail, edit)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 4`
+2. "I approve" (the two TDD behaviors: salary min > max rejected, and hiring manager limited to Hiring Manager group members)
+3. "I approve" (behavior 1 RED test, salary validation)
+4. "Move on"
+5. "I approve" (behavior 2 RED test, hiring manager limits)
+6. "Move on"
+7. "Move on" (remaining non-TDD requirements and feedback loops)
+8. "Everything works as intended"
+
+### Summary
+- **Outcome:** Added the `JobOpening` model (migration `0003_jobopening`) with title, department, location, employment type, description, optional salary min/max, hiring manager, number of positions (default 1, minimum 1), status (default Open), `created_at`, and `closed_at`. `JobOpening.clean()` rejects a salary min greater than the max, with the error on `salary_min`. The `hiring_manager` FK uses `limit_choices_to` on the Hiring Manager group, which filters the dropdown and re-checks tampered POSTs in validation, and `PROTECT` blocks deleting a user who manages an opening. Added list (search by title, department, location), create, detail, and edit pages; the form has no status field. Added "Job openings" to the navbar and home page, and registered the model in the admin. Two behaviors were built test-first (RED, then GREEN). Normal tests cover login-required, page rendering, create and edit, required fields, positions default and minimum, no status field (including a tampered status POST), delete protection, and search. 41 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - Claude proposed two TDD behaviors instead of three. Delete protection, search, and the missing status field got normal tests because they are one-line declarations or reuse the tested candidate search pattern.
+  - Claude asked whether the salary error should sit on the min field or at the top of the form; I approved the test as written (min field).
+- **Sideways:**
+  - A long shell command that wrote several files with nested heredocs failed to parse (`unexpected EOF while looking for matching '`). Nothing was changed. Claude confirmed with `git status` and rewrote the files with the editor tools instead.
+  - A `cd` in an earlier shell command moved the session into `hiring/tests/`. Later commands used absolute paths, so nothing broke.
+  - The `0003_jobopening` migration was generated before the hiring-manager restriction existed. Since it was never committed or applied, Claude deleted and regenerated it.
+  - Ruff flagged `get_absolute_url` coming after `clean()` (DJ012). Claude reordered the methods.
+  - Salaries were shown as "$90000" at first. Claude switched to `floatformat:"0g"` ("$90,000") before manual verification and updated the test.
+  - CLAUDE.md had uncommitted edits from before this session; they were left out of the Phase 4 commit.
+
 ## 2026-10-30 — Implemented Phase 3 (candidate archiving)
 
 ### Prompts
