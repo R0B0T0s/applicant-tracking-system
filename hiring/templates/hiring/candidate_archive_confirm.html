@@ -6,7 +6,11 @@
   <div class="card bg-base-100 shadow max-w-xl mx-auto">
     <div class="card-body">
       <h1 class="card-title text-2xl">{% if archiving %}Archive{% else %}Un-archive{% endif %} {{ candidate }}?</h1>
-      {% if archiving %}
+      {% if blocked_reason %}
+        <div role="alert" class="alert alert-error">
+          <span>{{ blocked_reason }}</span>
+        </div>
+      {% elif archiving %}
         <p>Archived candidates are hidden from the candidate list unless "Show archived" is checked. You can un-archive them later.</p>
       {% else %}
         <p>{{ candidate }} will appear in the candidate list again.</p>
@@ -14,7 +18,9 @@
       <form method="post" class="card-actions justify-end mt-4">
         {% csrf_token %}
         <a href="{{ candidate.get_absolute_url }}" class="btn btn-ghost">Cancel</a>
-        <button type="submit" class="btn {% if archiving %}btn-warning{% else %}btn-primary{% endif %}">{% if archiving %}Archive{% else %}Un-archive{% endif %}</button>
+        {% if not blocked_reason %}
+          <button type="submit" class="btn {% if archiving %}btn-warning{% else %}btn-primary{% endif %}">{% if archiving %}Archive{% else %}Un-archive{% endif %}</button>
+        {% endif %}
       </form>
     </div>
   </div>

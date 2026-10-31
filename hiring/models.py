@@ -1,9 +1,10 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models.functions import Lower
 from django.urls import reverse
+from django.utils import timezone
 
 from .permissions import HIRING_MANAGER_GROUP
 
@@ -46,6 +47,28 @@ class Candidate(models.Model):
 
     def get_absolute_url(self):
         return reverse("hiring:candidate_detail", args=[self.pk])
+
+    def archive_blocked_reason(self):
+        """Return why this candidate can't be archived, or None if they can."""
+        if self.applications.filter(stage__in=Application.ACTIVE_STAGES).exists():
+            return (
+                f"{self} has active applications. Withdraw or reject their "
+                "active applications before archiving."
+            )
+        return None
+
+    def archive(self):
+        reason = self.archive_blocked_reason()
+        if reason:
+            raise ValidationError(reason)
+        self.is_archived = True
+        self.archived_at = timezone.now()
+        self.save()
+
+    def unarchive(self):
+        self.is_archived = False
+        self.archived_at = None
+        self.save()
 
 
 class Skill(models.Model):
@@ -130,3 +153,97 @@ class JobOpening(models.Model):
             raise ValidationError(
                 {"salary_min": "Minimum salary cannot be greater than the maximum."}
             )
+
+
+class ApplicationManager(models.Manager):
+    def create_application(self, candidate, job_opening, user):
+        """Create an application in Applied and record its first history entry."""
+        application = self.model(candidate=candidate, job_opening=job_opening)
+        application.full_clean()
+        with transaction.atomic():
+            application.save()
+            application.stage_changes.create(
+                to_stage=Application.Stage.APPLIED, changed_by=user
+            )
+        return application
+
+
+class Application(models.Model):
+    class Stage(models.TextChoices):
+        APPLIED = "applied", "Applied"
+        SCREENING = "screening", "Screening"
+        INTERVIEW = "interview", "Interview"
+        FINAL_REVIEW = "final_review", "Final Review"
+        OFFER = "offer", "Offer"
+        HIRED = "hired", "Hired"
+        REJECTED = "rejected", "Rejected"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+
+    ACTIVE_STAGES = [
+        Stage.APPLIED,
+        Stage.SCREENING,
+        Stage.INTERVIEW,
+        Stage.FINAL_REVIEW,
+        Stage.OFFER,
+    ]
+
+    candidate = models.ForeignKey(
+        Candidate, on_delete=models.PROTECT, related_name="applications"
+    )
+    job_opening = models.ForeignKey(
+        JobOpening, on_delete=models.PROTECT, related_name="applications"
+    )
+    stage = models.CharField(
+        max_length=20, choices=Stage.choices, default=Stage.APPLIED
+    )
+    applied_at = models.DateTimeField(auto_now_add=True)
+
+    objects = ApplicationManager()
+
+    class Meta:
+        ordering = ["-applied_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["candidate", "job_opening"],
+                name="unique_application_per_candidate_job",
+                violation_error_message=(
+                    "This candidate has already applied to this job opening."
+                ),
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.candidate} → {self.job_opening}"
+
+    def clean(self):
+        # Only new applications are refused; existing ones keep moving.
+        if self.pk is not None:
+            return
+        errors = []
+        if self.job_opening_id and self.job_opening.status == JobOpening.Status.CLOSED:
+            errors.append("This job opening is closed and not accepting applications.")
+        if self.candidate_id and self.candidate.is_archived:
+            errors.append("Archived candidates cannot receive new applications.")
+        if errors:
+            raise ValidationError(errors)
+
+
+class StageChange(models.Model):
+    application = models.ForeignKey(
+        Application, on_delete=models.CASCADE, related_name="stage_changes"
+    )
+    # Empty for the first entry, when the application is created.
+    from_stage = models.CharField(
+        max_length=20, choices=Application.Stage.choices, blank=True
+    )
+    to_stage = models.CharField(max_length=20, choices=Application.Stage.choices)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["changed_at", "pk"]
+
+    def __str__(self):
+        return f"{self.from_stage or '—'} → {self.to_stage}"

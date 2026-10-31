@@ -1,9 +1,9 @@
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 
-from .forms import CandidateForm, JobOpeningForm, SkillForm
-from .models import Candidate, JobOpening, Skill
+from .forms import ApplicationForm, CandidateForm, JobOpeningForm, SkillForm
+from .models import Application, Candidate, JobOpening, Skill
 from .permissions import hiring_manager_required
 
 
@@ -37,7 +37,12 @@ def candidate_list(request):
 
 def candidate_detail(request, pk):
     candidate = get_object_or_404(Candidate, pk=pk)
-    return render(request, "hiring/candidate_detail.html", {"candidate": candidate})
+    applications = candidate.applications.select_related("job_opening")
+    return render(
+        request,
+        "hiring/candidate_detail.html",
+        {"candidate": candidate, "applications": applications},
+    )
 
 
 def candidate_create(request):
@@ -69,14 +74,20 @@ def candidate_edit(request, pk):
 def candidate_archive(request, pk):
     candidate = get_object_or_404(Candidate, pk=pk)
     if request.method == "POST":
-        candidate.is_archived = True
-        candidate.archived_at = timezone.now()
-        candidate.save()
-        return redirect(candidate)
+        try:
+            candidate.archive()
+        except ValidationError:
+            pass  # The confirm page below shows the reason.
+        else:
+            return redirect(candidate)
     return render(
         request,
         "hiring/candidate_archive_confirm.html",
-        {"candidate": candidate, "archiving": True},
+        {
+            "candidate": candidate,
+            "archiving": True,
+            "blocked_reason": candidate.archive_blocked_reason(),
+        },
     )
 
 
@@ -84,9 +95,7 @@ def candidate_archive(request, pk):
 def candidate_unarchive(request, pk):
     candidate = get_object_or_404(Candidate, pk=pk)
     if request.method == "POST":
-        candidate.is_archived = False
-        candidate.archived_at = None
-        candidate.save()
+        candidate.unarchive()
         return redirect(candidate)
     return render(
         request,
@@ -112,7 +121,10 @@ def job_detail(request, pk):
         JobOpening.objects.select_related("hiring_manager").prefetch_related("skills"),
         pk=pk,
     )
-    return render(request, "hiring/job_detail.html", {"job": job})
+    applications = job.applications.select_related("candidate")
+    return render(
+        request, "hiring/job_detail.html", {"job": job, "applications": applications}
+    )
 
 
 def job_create(request):
@@ -179,4 +191,27 @@ def skill_delete(request, pk):
         request,
         "hiring/skill_delete_confirm.html",
         {"skill": skill, "job_count": skill.job_openings.count()},
+    )
+
+
+def candidate_application_create(request, pk):
+    candidate = get_object_or_404(Candidate, pk=pk)
+    form = ApplicationForm(request.POST or None, candidate=candidate)
+    return _application_create(request, form, back_to=candidate)
+
+
+def job_application_create(request, pk):
+    job = get_object_or_404(JobOpening, pk=pk)
+    form = ApplicationForm(request.POST or None, job_opening=job)
+    return _application_create(request, form, back_to=job)
+
+
+def _application_create(request, form, back_to):
+    if request.method == "POST" and form.is_valid():
+        Application.objects.create_application(
+            form.instance.candidate, form.instance.job_opening, request.user
+        )
+        return redirect(back_to)
+    return render(
+        request, "hiring/application_form.html", {"form": form, "back_to": back_to}
     )

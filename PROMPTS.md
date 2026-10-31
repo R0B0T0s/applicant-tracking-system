@@ -28,6 +28,32 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-30 — Implemented Phase 6 (applications)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 6`
+2. "I approve" (the three TDD behaviors: a new application starts in Applied with one history entry, the model refuses closed openings and archived candidates, and archiving is blocked while a candidate has active applications)
+3. "Approved" (behavior 1 RED test)
+4. "Move on"
+5. "Approved" (behavior 2 RED test)
+6. "Move on"
+7. "I approve" (behavior 3 RED test)
+8. "Go ahead"
+9. "Manual Verification has passed."
+
+### Summary
+- **Outcome:** Added the `Application` and `StageChange` models (migration `0005_application_stagechange`). `Application` has the eight stages, `ACTIVE_STAGES`, PROTECT FKs to Candidate and JobOpening, and a unique (candidate, job opening) constraint with a clear message. `Application.objects.create_application(candidate, job_opening, user)` validates, saves in Applied, and writes the first StageChange (empty → Applied, by the acting user) in one transaction. `Application.clean()` refuses new applications to closed openings or archived candidates. `Candidate.archive_blocked_reason()`, `archive()`, and `unarchive()` moved archiving into the model, and the archive confirm page shows the instruction and hides the button while active applications exist. Added `ApplicationForm`, which fixes one side and limits the other to open jobs or non-archived candidates, plus "Add application" (candidate page, `/candidates/<pk>/apply/`) and "Add applicant" (job page, `/jobs/<pk>/applications/new/`). Both detail pages now list applications with their stage. The admin shows applications read-only, with their history inline. Three behaviors were built test-first (RED, then GREEN). Normal tests cover login-required, creating from both pages, duplicates at the form and database level, several openings per candidate, archived and closed choices left out and refused on tampering, application lists on both pages, archiving allowed with only final-stage applications, and candidate delete protection in the admin and the database. 70 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - `StageChange.from_stage` stores an empty string for the first entry instead of NULL (the plan says nullable), because Ruff's `DJ001` rule forbids nullable CharFields. Claude flagged this at behavior 1's RED step, and I approved.
+  - `Application.job_opening` is PROTECT, like `candidate`, although the PRD names PROTECT only for candidate.
+  - The admin is read-only for applications so history can't be skipped or edited there.
+  - Closing a job isn't in the UI until Phase 10, so the closed-opening rules were checked by tests only, not by hand.
+- **Sideways:**
+  - Django's ModelForm skips constraints on fields missing from the form, which would have skipped the duplicate check (each form shows only one of the two fields). Claude overrode `ApplicationForm.validate_constraints()` to check the whole instance.
+  - The first admin delete test expected Django's "protected related objects" message, but the admin refused the delete because the read-only Application admin has no delete permission. Claude changed that test to check for "Cannot delete candidate" and added a separate test that the database raises `ProtectedError`.
+  - Ruff reformatted `test_applications.py`; no behavior changed.
+  - CLAUDE.md still had uncommitted edits from before this session; they were left out of the Phase 6 commit.
+
 ## 2026-10-30 — Implemented Phase 5 (skills)
 
 ### Prompts

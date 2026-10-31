@@ -45,4 +45,33 @@
       </dl>
     </div>
   </div>
+
+  <div class="card bg-base-100 shadow mt-6">
+    <div class="card-body">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="card-title text-xl">Applications</h2>
+        {% if not candidate.is_archived %}
+          <a href="{% url 'hiring:candidate_application_create' candidate.pk %}" class="btn btn-sm btn-primary">Add application</a>
+        {% endif %}
+      </div>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr><th>Job opening</th><th>Stage</th><th>Applied</th></tr>
+          </thead>
+          <tbody>
+            {% for application in applications %}
+              <tr>
+                <td><a href="{{ application.job_opening.get_absolute_url }}" class="link link-hover font-medium">{{ application.job_opening }}</a></td>
+                <td><span class="badge badge-sm badge-outline">{{ application.get_stage_display }}</span></td>
+                <td>{{ application.applied_at|date:"M j, Y" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3" class="text-center text-base-content/60">No applications yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 {% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Add application — {{ back_to }}{% endblock %}
+
+{% block content %}
+  <div class="card bg-base-100 shadow max-w-xl mx-auto">
+    <div class="card-body">
+      <h1 class="card-title text-2xl">
+        {% if form.fields.job_opening %}Add application for {{ back_to }}{% else %}Add applicant to {{ back_to }}{% endif %}
+      </h1>
+      <p class="text-base-content/70">The application starts in the Applied stage.</p>
+      {% if form.non_field_errors %}
+        <div role="alert" class="alert alert-error">
+          {% for error in form.non_field_errors %}<span>{{ error }}</span>{% endfor %}
+        </div>
+      {% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">{{ field.label }} *</legend>
+            <select name="{{ field.html_name }}" id="{{ field.id_for_label }}" class="select w-full {% if field.errors %}select-error{% endif %}">
+              {% for value, label in field.field.choices %}
+                <option value="{{ value }}" {% if value|stringformat:"s" == field.value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            {% for error in field.errors %}<p class="label text-error">{{ error }}</p>{% endfor %}
+          </fieldset>
+        {% endfor %}
+        <div class="flex gap-2 justify-end mt-4">
+          <a href="{{ back_to.get_absolute_url }}" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary">Add application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
