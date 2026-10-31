@@ -1,0 +1,19 @@
+<div id="application-{{ application.pk }}" class="card card-border bg-base-100 {% if compact %}card-xs{% else %}card-sm{% endif %}">
+  <div class="card-body gap-1">
+    <a href="{{ application.candidate.get_absolute_url }}" class="link link-hover font-medium">{{ application.candidate }}</a>
+    {% if application.moves %}
+      <select name="stage" aria-label="Move {{ application.candidate }}"
+              class="select select-xs w-full"
+              hx-post="{% url 'hiring:application_move' application.pk %}"
+              hx-trigger="change" hx-target="#board" hx-swap="outerHTML">
+        <option value="" selected disabled>Move to…</option>
+        {% for value, label in application.moves %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
+    {% if application.error %}
+      <div role="alert" class="alert alert-error alert-soft text-xs p-2">{{ application.error }}</div>
+    {% endif %}
+  </div>
+</div>

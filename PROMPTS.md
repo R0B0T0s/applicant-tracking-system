@@ -28,6 +28,31 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-30 — Implemented Phase 7 (stage rules and the Kanban board)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 7`
+2. "go ahead" (the three TDD behaviors: allowed moves for every stage, `move_to_stage` records history and refuses illegal moves, and a tampered move POST returns the board with an inline error)
+3. "Approved" (behavior 1 RED test)
+4. "Move on"
+5. "Approved" (behavior 2 RED test)
+6. "Move on"
+7. "Approved" (behavior 3 RED test)
+8. "Go ahead"
+9. "Everything works"
+
+### Summary
+- **Outcome:** Added `hiring/stages.py`, a pure rules module with no Django imports: stage constants, `ACTIVE_STAGES`, `FINAL_STAGES`, `allowed_moves(stage)` (forward any number up to Offer, Hired only from Offer, back exactly one, Rejected/Withdrawn from any active stage, nothing from a final stage), and `is_allowed()`. Added `Application.move_to_stage(stage, user)`, which checks the rules, then saves the stage and writes a StageChange in one transaction, raising `ValidationError` ("Can't move from X to Y.") otherwise. Added the board at `/jobs/<pk>/board/` with five active columns and a compact "Final stages" section, cards with a dropdown of only the allowed moves, and an HTMX POST to `/applications/<pk>/move/` that swaps the `#board` fragment and shows refused moves inline on the card. Added the HTMX CSRF header on `<body>` and a "Pipeline board" button on the job detail page. Three behaviors were built test-first (RED, then GREEN). Normal tests cover login-required, column placement, dropdown contents, final cards without a dropdown, the success fragment, GET refused on the move endpoint, the board link, moves on closed openings, and unknown stages. 90 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - The move endpoint returns 200 even for a refused move, because HTMX 2 doesn't swap 4xx responses by default and the inline error would never show.
+  - Final-stage cards have no dropdown for anyone yet; manager Reopen is Phase 8.
+  - Each test file keeps its own fixtures, following the existing pattern, instead of a shared `conftest.py`.
+- **Sideways:**
+  - At behavior 1's RED step, the three final-stage cases already passed because the stub returned `[]`; Claude called this out and kept them as guards.
+  - For behavior 3 to fail on an assertion rather than a crash, the move view was first built to swallow the error, and passing it to the card was the GREEN step.
+  - Ruff reformatted the two new test files; no behavior changed.
+  - CLAUDE.md still had uncommitted edits from before this session; they were left out of the Phase 7 commit.
+
 ## 2026-10-30 — Implemented Phase 6 (applications)
 
 ### Prompts

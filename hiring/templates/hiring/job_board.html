@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.title }} board{% endblock %}
+
+{% block content %}
+  <div class="mb-4">
+    <a href="{{ job.get_absolute_url }}" class="link link-hover text-sm">&larr; {{ job.title }}</a>
+  </div>
+  <h1 class="text-2xl font-bold mb-4 flex items-center gap-2">
+    {{ job.title }} pipeline
+    <span class="badge {% if job.status == 'open' %}badge-success{% else %}badge-neutral{% endif %}">{{ job.get_status_display }}</span>
+  </h1>
+  {% include "hiring/_board.html" %}
+{% endblock %}

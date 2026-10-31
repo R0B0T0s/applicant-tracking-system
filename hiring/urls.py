@@ -35,6 +35,12 @@ urlpatterns = [
         views.job_application_create,
         name="job_application_create",
     ),
+    path("jobs/<int:pk>/board/", views.job_board, name="job_board"),
+    path(
+        "applications/<int:pk>/move/",
+        views.application_move,
+        name="application_move",
+    ),
     path("skills/", views.skill_list, name="skill_list"),
     path("skills/new/", views.skill_create, name="skill_create"),
     path("skills/<int:pk>/edit/", views.skill_edit, name="skill_edit"),

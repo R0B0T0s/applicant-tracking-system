@@ -6,6 +6,7 @@ from django.db.models.functions import Lower
 from django.urls import reverse
 from django.utils import timezone
 
+from . import stages
 from .permissions import HIRING_MANAGER_GROUP
 
 
@@ -226,6 +227,21 @@ class Application(models.Model):
             errors.append("Archived candidates cannot receive new applications.")
         if errors:
             raise ValidationError(errors)
+
+    def move_to_stage(self, stage, user):
+        """Move to `stage` if the rules allow it, and record the change."""
+        if not stages.is_allowed(self.stage, stage):
+            raise ValidationError(
+                f"Can't move from {self.get_stage_display()} to "
+                f"{self.Stage(stage).label if stage in self.Stage else stage}."
+            )
+        with transaction.atomic():
+            from_stage = self.stage
+            self.stage = stage
+            self.save(update_fields=["stage"])
+            self.stage_changes.create(
+                from_stage=from_stage, to_stage=stage, changed_by=user
+            )
 
 
 class StageChange(models.Model):
