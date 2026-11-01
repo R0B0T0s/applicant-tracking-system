@@ -28,6 +28,29 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-31 — Implemented Phase 9 (stage history timelines)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 9`
+2. "I approve" (the two TDD behaviors: the candidate detail page shows each application's full timeline in order, and an application history page reachable from the job side shows the timeline)
+3. "I approve" (behavior 1 RED test)
+4. "Yes, move on to behavior 2"
+5. "I approve" (behavior 2 RED test)
+6. "Go ahead"
+7. "Within the Applications section on the canidate page, the text does not stay contained within the section. Also, the "stage hsitory" section is difficult to differentiate for each section, please fix this."
+8. "It looks great, manual verification has passed"
+
+### Summary
+- **Outcome:** Added a shared `_stage_timeline.html` partial that lists an application's StageChanges oldest first. Each entry shows "From → To", "by <user> on <date>", and the first entry reads "→ Applied". The candidate detail page now shows each application as its own card (job title, current stage, applied date) with its stage history. Added an application history page at `/applications/<pk>/` (`hiring:application_detail`) with the same timeline and links back to the candidate, the job, and the board. It's linked from a "History" link on each board card and a "History" column on the job detail applications table. The candidate view prefetches `stage_changes__changed_by`. Two behaviors were built test-first (RED, then GREEN) in a new `hiring/tests/test_history.py`. Normal tests cover a reopen and back-step history, one timeline per application, login-required, and 404 for an unknown application. 112 tests pass, and Ruff is clean. Manually verified in the browser.
+- **Deviations:**
+  - Claude proposed two TDD behaviors instead of three. Reopens and back-steps are ordinary StageChange rows rendered by the same partial, so they got a normal test.
+  - The timeline is reachable from both the board card and the job detail list, though the plan asks for either one; behavior 2's test covers both.
+  - The job side reaches the timeline through a new application history page instead of showing timelines inline on the board.
+- **Sideways:**
+  - Behavior 2's first RED needed scaffolding: Claude added the URL and a stub view returning an empty page, so the test failed on the missing link rather than `NoReverseMatch`.
+  - During manual verification I found the timeline text spilling outside the candidate page's Applications section, and the stage histories were hard to tell apart. Claude couldn't see the page, but traced the likely cause to DaisyUI's grid-based `timeline` component centering each entry's text across rows. It replaced the component with a plain bordered list and put each application in a card with a shaded header. Tests passed unchanged, and I confirmed the fix in the browser.
+  - CLAUDE.md still has uncommitted edits from before this session; they were left out of the Phase 9 commit.
+
 ## 2026-10-31 — Implemented Phase 8 (manager reopen of final-stage applications)
 
 ### Prompts

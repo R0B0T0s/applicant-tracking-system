@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ application }}{% endblock %}
+
+{% block content %}
+  <div class="mb-4 flex flex-wrap gap-4">
+    <a href="{{ application.job_opening.get_absolute_url }}" class="link link-hover text-sm">&larr; {{ application.job_opening }}</a>
+    <a href="{% url 'hiring:job_board' application.job_opening.pk %}" class="link link-hover text-sm">&larr; Pipeline board</a>
+  </div>
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h1 class="card-title text-2xl">
+          <a href="{{ application.candidate.get_absolute_url }}" class="link link-hover">{{ application.candidate }}</a>
+          <span class="font-normal text-base-content/60">for</span>
+          <a href="{{ application.job_opening.get_absolute_url }}" class="link link-hover">{{ application.job_opening }}</a>
+        </h1>
+        <span class="badge badge-outline">{{ application.get_stage_display }}</span>
+      </div>
+      <p class="text-sm text-base-content/60">Applied {{ application.applied_at|date:"M j, Y" }}</p>
+      <h2 class="font-semibold mt-2">Stage history</h2>
+      {% include "hiring/_stage_timeline.html" %}
+    </div>
+  </div>
+{% endblock %}

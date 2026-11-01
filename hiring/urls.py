@@ -37,6 +37,11 @@ urlpatterns = [
     ),
     path("jobs/<int:pk>/board/", views.job_board, name="job_board"),
     path(
+        "applications/<int:pk>/",
+        views.application_detail,
+        name="application_detail",
+    ),
+    path(
         "applications/<int:pk>/move/",
         views.application_move,
         name="application_move",

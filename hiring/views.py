@@ -39,7 +39,9 @@ def candidate_list(request):
 
 def candidate_detail(request, pk):
     candidate = get_object_or_404(Candidate, pk=pk)
-    applications = candidate.applications.select_related("job_opening")
+    applications = candidate.applications.select_related(
+        "job_opening"
+    ).prefetch_related("stage_changes__changed_by")
     return render(
         request,
         "hiring/candidate_detail.html",
@@ -222,6 +224,15 @@ def _application_create(request, form, back_to):
 def job_board(request, pk):
     job = get_object_or_404(JobOpening, pk=pk)
     return render(request, "hiring/job_board.html", _board_context(job, request.user))
+
+
+def application_detail(request, pk):
+    application = get_object_or_404(
+        Application.objects.select_related("candidate", "job_opening"), pk=pk
+    )
+    return render(
+        request, "hiring/application_detail.html", {"application": application}
+    )
 
 
 @require_POST

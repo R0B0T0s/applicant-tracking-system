@@ -1,6 +1,9 @@
 <div id="application-{{ application.pk }}" class="card card-border bg-base-100 {% if compact %}card-xs{% else %}card-sm{% endif %}">
   <div class="card-body gap-1">
-    <a href="{{ application.candidate.get_absolute_url }}" class="link link-hover font-medium">{{ application.candidate }}</a>
+    <div class="flex items-baseline justify-between gap-2">
+      <a href="{{ application.candidate.get_absolute_url }}" class="link link-hover font-medium">{{ application.candidate }}</a>
+      <a href="{% url 'hiring:application_detail' application.pk %}" class="link link-hover text-xs text-base-content/60">History</a>
+    </div>
     {% if application.moves %}
       <select name="stage" aria-label="Move {{ application.candidate }}"
               class="select select-xs w-full"

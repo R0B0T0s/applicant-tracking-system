@@ -59,7 +59,7 @@
       <div class="overflow-x-auto">
         <table class="table">
           <thead>
-            <tr><th>Candidate</th><th>Stage</th><th>Applied</th></tr>
+            <tr><th>Candidate</th><th>Stage</th><th>Applied</th><th></th></tr>
           </thead>
           <tbody>
             {% for application in applications %}
@@ -67,9 +67,10 @@
                 <td><a href="{{ application.candidate.get_absolute_url }}" class="link link-hover font-medium">{{ application.candidate }}</a></td>
                 <td><span class="badge badge-sm badge-outline">{{ application.get_stage_display }}</span></td>
                 <td>{{ application.applied_at|date:"M j, Y" }}</td>
+                <td><a href="{% url 'hiring:application_detail' application.pk %}" class="link link-hover text-sm">History</a></td>
               </tr>
             {% empty %}
-              <tr><td colspan="3" class="text-center text-base-content/60">No applications yet.</td></tr>
+              <tr><td colspan="4"class="text-center text-base-content/60">No applications yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>

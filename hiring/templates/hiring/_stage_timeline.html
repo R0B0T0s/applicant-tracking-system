@@ -1,0 +1,12 @@
+<ul id="timeline-{{ application.pk }}" class="ms-2 border-s-2 border-base-300 space-y-3">
+  {% for change in application.stage_changes.all %}
+    <li class="relative ps-5 min-w-0">
+      <span class="absolute -start-[7px] top-1.5 size-3 rounded-full ring-4 ring-base-100 {% if forloop.last %}bg-primary{% else %}bg-base-300{% endif %}"></span>
+      <div class="font-medium break-words">{% if change.from_stage %}{{ change.get_from_stage_display }} {% endif %}→ {{ change.get_to_stage_display }}</div>
+      <div class="text-sm text-base-content/60 break-words">
+        by {{ change.changed_by.get_full_name|default:change.changed_by.get_username }}
+        on <time datetime="{{ change.changed_at|date:'c' }}">{{ change.changed_at|date:"M j, Y, g:i a" }}</time>
+      </div>
+    </li>
+  {% endfor %}
+</ul>
