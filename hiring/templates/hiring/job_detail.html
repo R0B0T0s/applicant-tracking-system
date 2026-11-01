@@ -16,8 +16,20 @@
         <div class="flex gap-2">
           <a href="{% url 'hiring:job_board' job.pk %}" class="btn btn-sm">Pipeline board</a>
           <a href="{% url 'hiring:job_edit' job.pk %}" class="btn btn-sm btn-primary">Edit</a>
+          {% if is_hiring_manager %}
+            {% if job.status == 'open' %}
+              <a href="{% url 'hiring:job_close' job.pk %}" class="btn btn-sm btn-warning">Close opening</a>
+            {% else %}
+              <a href="{% url 'hiring:job_reopen' job.pk %}" class="btn btn-sm">Reopen opening</a>
+            {% endif %}
+          {% endif %}
         </div>
       </div>
+      {% if job.status == 'closed' %}
+        <div role="alert" class="alert alert-warning">
+          <span><strong>Closed</strong> on {{ job.closed_at|date:"M j, Y, g:i a" }}. This opening isn't accepting new applications, but existing applicants can still move through the stages.</span>
+        </div>
+      {% endif %}
       <dl class="grid grid-cols-1 sm:grid-cols-[12rem_1fr] gap-x-4 gap-y-2 mt-2">
         <dt class="font-semibold">Department</dt>
         <dd>{{ job.department }}</dd>
@@ -28,7 +40,7 @@
         <dt class="font-semibold">Hiring manager</dt>
         <dd>{{ job.hiring_manager.get_full_name|default:job.hiring_manager.get_username }}</dd>
         <dt class="font-semibold">Positions</dt>
-        <dd>{{ job.number_of_positions }}</dd>
+        <dd>{{ job.positions_filled }} of {{ job.number_of_positions }} positions filled</dd>
         <dt class="font-semibold">Salary range</dt>
         <dd>
           {% if job.salary_min is not None and job.salary_max is not None %}${{ job.salary_min|floatformat:"0g" }} – ${{ job.salary_max|floatformat:"0g" }}
@@ -70,7 +82,7 @@
                 <td><a href="{% url 'hiring:application_detail' application.pk %}" class="link link-hover text-sm">History</a></td>
               </tr>
             {% empty %}
-              <tr><td colspan="4"class="text-center text-base-content/60">No applications yet.</td></tr>
+              <tr><td colspan="4" class="text-center text-base-content/60">No applications yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>

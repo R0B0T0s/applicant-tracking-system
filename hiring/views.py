@@ -155,6 +155,34 @@ def job_edit(request, pk):
 
 
 @hiring_manager_required
+def job_close(request, pk):
+    job = get_object_or_404(JobOpening, pk=pk)
+    if request.method == "POST":
+        job.close()
+        return redirect(job)
+    return render(
+        request,
+        "hiring/job_close_confirm.html",
+        {
+            "job": job,
+            "closing": True,
+            "active_count": job.active_application_count(),
+        },
+    )
+
+
+@hiring_manager_required
+def job_reopen(request, pk):
+    job = get_object_or_404(JobOpening, pk=pk)
+    if request.method == "POST":
+        job.reopen()
+        return redirect(job)
+    return render(
+        request, "hiring/job_close_confirm.html", {"job": job, "closing": False}
+    )
+
+
+@hiring_manager_required
 def skill_list(request):
     skills = Skill.objects.annotate(job_count=Count("job_openings"))
     return render(request, "hiring/skill_list.html", {"skills": skills})

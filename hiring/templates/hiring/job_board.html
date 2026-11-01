@@ -10,5 +10,10 @@
     {{ job.title }} pipeline
     <span class="badge {% if job.status == 'open' %}badge-success{% else %}badge-neutral{% endif %}">{{ job.get_status_display }}</span>
   </h1>
+  {% if job.status == 'closed' %}
+    <div role="alert" class="alert alert-warning mb-4">
+      <span><strong>Closed</strong> on {{ job.closed_at|date:"M j, Y" }}. No new applications, but applicants below can still be moved, including to Hired.</span>
+    </div>
+  {% endif %}
   {% include "hiring/_board.html" %}
 {% endblock %}

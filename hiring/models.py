@@ -155,6 +155,22 @@ class JobOpening(models.Model):
                 {"salary_min": "Minimum salary cannot be greater than the maximum."}
             )
 
+    def close(self):
+        self.status = self.Status.CLOSED
+        self.closed_at = timezone.now()
+        self.save()
+
+    def reopen(self):
+        self.status = self.Status.OPEN
+        self.closed_at = None
+        self.save()
+
+    def active_application_count(self):
+        return self.applications.filter(stage__in=Application.ACTIVE_STAGES).count()
+
+    def positions_filled(self):
+        return self.applications.filter(stage=Application.Stage.HIRED).count()
+
 
 def move_label(stage):
     """Display label for a move target: a stage, or Reopen."""
