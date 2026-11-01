@@ -28,6 +28,32 @@ Each entry has this shape:
     - **Deviations:** recommendations overridden, follow-up questions asked
     - **Sideways:** failures, wrong turns, and how they were caught
 
+## 2026-10-31 — Implemented Phase 10 (close and reopen job openings)
+
+### Prompts
+1. `/implement @prd/applicant-tracking-system.md @plans/applicant-tracking-system.md Implement Phase 10`
+2. "I approve" (the three TDD behaviors: a manager's close/reopen POST sets and clears `closed_at`, the close confirmation counts only active applications, and "X of N positions filled" counts only Hired)
+3. "I approve" (behavior 1 RED test)
+4. "Move on"
+5. "I approve" (behavior 2 RED test)
+6. "Move on"
+7. "I approve" (behavior 3 RED test)
+8. "Go ahead"
+9. "It all works"
+
+### Summary
+- **Outcome:** Added `JobOpening.close()` (status Closed, `closed_at` set), `reopen()` (status Open, `closed_at` cleared), `active_application_count()` (Applied through Offer, the same `ACTIVE_STAGES` as candidate archiving), and `positions_filled()` (Hired only). Added manager-only `job_close` and `job_reopen` views at `/jobs/<pk>/close/` and `/jobs/<pk>/reopen/`, sharing a `job_close_confirm.html` confirmation page that warns how many active applications remain. The job detail page shows "X of N positions filled", Close/Reopen buttons for managers only, and a "Closed on …" banner. The board shows the same banner. Existing behavior already covered the rest: refusing new applications to closed openings in the model, filtering them out of the candidate-page form, and hiding "Add applicant" on the job page. Three behaviors were built test-first (RED, then GREEN) in a new `hiring/tests/test_job_lifecycle.py`. Normal tests cover login-required, staff 403s, manager-only buttons, closing leaving applications unchanged, Closed markers, a tampered job-page application to a closed opening, and an HTMX move to Hired on a closed opening's board. 124 tests pass, Ruff is clean, and no migration was needed. Manually verified in the browser.
+- **Deviations:**
+  - The close/reopen tests went into a new `test_job_lifecycle.py` instead of `test_jobs.py`, because they need application fixtures.
+  - Close and reopen share one confirmation template, like candidate archive and un-archive.
+  - Fixed a missing space in an existing `colspan="4"class=` attribute on the job detail page while editing it.
+- **Sideways:**
+  - Each RED test needed scaffolding first: routes, views, the template, and stub model methods, so the tests failed on assertions rather than `NoReverseMatch`.
+  - Claude replaced a mutable-default counter in the behavior 2 test fixture with `itertools.count` after the test was written; what the test asserts didn't change.
+  - The first run of the remaining tests had one failure: the buttons test asked for both `manager_client` and `staff_client`, which share one `client`, so the staff login overwrote the manager's. Claude rewrote the test to log each user into one client explicitly.
+  - Claude sent the PROMPTS.md edit and the commit in the same step. The edit failed (likely CRLF line endings), so the Phase 10 commit was pushed without this log entry. The entry was added in a separate follow-up commit instead of amending the pushed one.
+  - CLAUDE.md still has uncommitted edits from before this session; they were left out of the Phase 10 commits.
+
 ## 2026-10-31 — Implemented Phase 9 (stage history timelines)
 
 ### Prompts
